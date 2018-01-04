@@ -118,6 +118,57 @@ public void init() {
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;以上注解指`init()`方法测试时，预热2轮，正式计量1轮，但是如果测试方法比较多，还是建议通过`Options`进行配置，具体可以参考`HelloworldRunner`。
 
+## 数据准备
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;开始测试前，往往有数据准备的需求，比如：初始化一个变量或者一批数据，可以通过构造函数进行初始化，不过 **JMH** 提供了一些手段帮助我们完成这个工作。
+
+```java
+@State(Scope.Benchmark)
+public class Helloworld {
+    private long i;
+
+    @Setup
+    public void init() {
+        i = System.currentTimeMillis();
+    }
+}
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;上面的例子中，初始化了成员变量`i`，**JMH** 会保证在构造`Helloworld`后调用`init()`方法。`@State(Scope.Benchmark)`是修饰成员变量作用域是整个测试，能够被整个测试过程可见。
+
+## 实现策略
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**JMH** 是通过什么手段来完成测试的呢？预热我们可以通过循环去做，大概1-2万次左右的调用已经足够让代码优化，测试过程我们就通过`System.currentTimeMillis()`看一下耗时不就行了？
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;这个问题先放一下，我们看一下 **JMH** 是如何驱动你的测试的。当我们运行 **JMH** 基准测试时，它会生成一些Java代码，通常会通过继承你的测试来完成，比如你的测试类型是`A`，测试方法`m()`，它会自动生成`A_jmhType_B1`、`A_jmhType_B2`、`A_jmhType_B3`和`A_jmhType`以及最终的测试执行逻辑`A_m_jmhTest`。生成代码的一般在`classes`目录下，看一下生成的类型信息：
+
+```java
+public class Helloworld_jmhType_B1 extends com.alibaba.microbenchmark.test.Helloworld {
+    boolean p000, p001, p002, p003, p004, p005, p006, p007, p008, p009, p010, p011, p012, p013, p014, p015;
+    boolean p240, p241, p242, p243, p244, p245, p246, p247, p248, p249, p250, p251, p252, p253, p254, p255;
+}
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;可以看到类型中定义了256个boolean，这理论是在做cache line padding，可以猜测 **JMH** 是想避免CPU缓存对测试过程带来的影响。
+
+```java
+public BenchmarkTaskResult m_Throughput(InfraControl control, ThreadParams threadParams) throws Throwable {
+  Helloworld_jmhType l_helloworld0_G = _jmh_tryInit_f_helloworld0_G(control);
+  control.preSetup();
+  control.announceWarmupReady();
+  while (control.warmupShouldWait) {
+      l_helloworld0_G.m();
+      res.allOps++;
+    }
+
+  m_thrpt_jmhStub(control, res, benchmarkParams, iterationParams, threadParams, blackhole, notifyControl, startRndMask, l_helloworld0_G);
+}
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;在最终的测试逻辑代码`Helloworld_m_jmhTest`中对吞吐量的测试，首先获取了针对`Helloworld`生成的子类，然后调用Setup，接下来预热，最后进行正式计量。
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;通过介绍 **JMH** 的测试过程，就可以回答之前的问题，因为 **JMH** 全面的考虑的性能测试中环境的影响，所以测试更加的客观。
+
 ## 例子：循环的微基准测试
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`for`循环大家平时经常使用，但是看到过一个优化策略，就是倒序遍历，比如：`for (int i = length; i > 0; i--)`优于`for (int i = 0; i < length; i++)`，有些不解。咨询了温少，温少给出的答案是`i > 0`优于`i < length`，因此倒序有优势，那么我们将这个场景做一下基准测试。
