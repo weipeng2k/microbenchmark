@@ -40,6 +40,23 @@
                 </configuration>
                 <version>2.3.2</version>
             </plugin>
+<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>1.6.0</version>
+				<goals>
+					<goal>exec</goal>
+				</goals>
+				<configuration>
+					<executable>${java.home}/bin/java</executable>
+					<arguments>
+						<argument>-classpath</argument>
+						<classpath />
+						<argument>org.openjdk.jmh.Main</argument>
+						<argument>.*</argument>
+					</arguments>
+				</configuration>
+			</plugin>
         </plugins>
     </build>
 </project>

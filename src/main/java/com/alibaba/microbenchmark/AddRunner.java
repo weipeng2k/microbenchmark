@@ -8,15 +8,16 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 /**
  * @author weipeng2k 2018年01月02日 下午14:25:08
  */
-public class BenchmarkRunner {
+public class AddRunner {
 
     public static void main(String[] args) throws RunnerException {
         Options opt = new OptionsBuilder()
-                .include("Perf")
-                .exclude("Helloworld")
+                .include("Add")
+                .exclude("Pref")
+                .exclude("world")
                 .warmupIterations(10)
                 .measurementIterations(10)
-                .forks(4)
+                .forks(3)
                 .build();
 
         new Runner(opt).run();

@@ -77,6 +77,13 @@ Helloworld.m  thrpt   30  3084697483.521 ± 27096926.646  ops/s
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;可以看到分数是30亿次，但是这30亿指的是什么呢？仔细观察 **Mode** 一项中类型是`thrpt`，其实就是`Throughput`吞吐量，代表着每秒完成的次数。
 
+## CPU的缓存
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;随着CPU的频率不断提升，而内存的访问速度却没有质的突破，为了弥补访问内存的速度慢，充分发挥CPU的计算资源，提高CPU整体吞吐量，在CPU与内存之间引入了一级Cache。随着热点数据体积越来越大，一级Cache L1已经不满足发展的要求，引入了二级Cache L2，三级Cache L3。
+
+
+
+
 ## 测试类型
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;前面提到测试的类型是吞吐量，也就是一秒钟调用完成的次数，但是如果想知道做一次需要多少时间该怎么办？
