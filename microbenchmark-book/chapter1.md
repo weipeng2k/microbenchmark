@@ -81,8 +81,61 @@ Helloworld.m  thrpt   30  3084697483.521 ± 27096926.646  ops/s
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;随着CPU的频率不断提升，而内存的访问速度却没有质的突破，为了弥补访问内存的速度慢，充分发挥CPU的计算资源，提高CPU整体吞吐量，在CPU与内存之间引入了一级Cache。随着热点数据体积越来越大，一级Cache L1已经不满足发展的要求，引入了二级Cache L2，三级Cache L3。
 
+<center>
+<img src="https://raw.githubusercontent.com/weipeng2k/microbenchmark/master/resources/microbenchmark-cpucache.png" />
+</center>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;如果需要的程序是在CPU寄存器中的，指令执行时1个周期内就能访问到他们。如果在CPU Cache中，需要1~30个周期；如果在主存中，需要50~200个周期；在磁盘上，大概需要几千万个周期。充分利用它的结构和机制，可以有效的提高程序的性能。
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;以我们常见的X86芯片为例，Cache的结构下图所示：整个Cache被分为S个组，每个组是又由E行个最小的存储单元——Cache Line所组成，而一个Cache Line中有B（B=64）个字节用来存储数据，即每个Cache Line能存储64个字节的数据，每个Cache Line又额外包含一个有效位(valid bit)、t个标记位(tag bit)，其中valid bit用来表示该缓存行是否有效；tag bit用来协助寻址，唯一标识存储在CacheLine中的块；而Cache Line里的64个字节其实是对应内存地址中的数据拷贝。根据Cache的结构题，我们可以推算出每一级Cache的大小为B×E×S。
+
+<center>
+<img src="https://raw.githubusercontent.com/weipeng2k/microbenchmark/master/resources/microbenchmark-cacheline.png" />
+</center>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;通过测试来观察一下cache对结果的影响。
+
+```java
+public class Datas {
+
+    final static int[] ints_20;
+    final static int[] ints_16;
+    final static int[] ints_10;
 
 
+    static {
+        ints_20 = IntStream.range(1, 21).toArray();
+        ints_16 = IntStream.range(1, 17).toArray();
+        ints_10 = IntStream.range(1, 11).toArray();
+    }
+
+
+    public static int run(int[] row, int[] column, int num) {
+        int sum = 0;
+        for(int i = 0; i < num; i++ ) {
+            sum += row[i] * column[i];
+        }
+        return sum;
+    }
+}
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`Datas`构建了三个int数组，分别有20、16和10个元素，然后将它们填入到`run`方法中进行计算，按照理论10个元素的int数组计算最快，但是事实是怎么样呢？
+
+> 测试过程是，对这个`run`方法重复 **1000000** 次
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;结果出乎预料，16最快，20次之，10最慢。
+
+> 在mac中可以通过 `sysctl machdep.cpu`，观察 `machdep.cpu.cache.linesize` 判定一个cacheline有多少字节
+
+```sh
+Benchmark      Mode  Cnt           Score          Error  Units
+Sixteen.m_16  thrpt   30  4257297103.919 ± 35131625.860  ops/s
+Ten.m_10      thrpt   30  4249084393.063 ± 40412170.064  ops/s
+Twenty.m_20   thrpt   30  4250860207.272 ± 23768994.727  ops/s
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;也就是说，cpu缓存和内存的交换次数是决定程序快慢的关键，减少cpu缓存和内存的无效交换，虽然指令数多了，但是瓶颈小了，实际执行更快了。这个和IO处理的场景也基本一致，系统的瓶颈往往都是在IO交互上。测试如此，所以我们需要使用 **JMH** 来更好的做微基准测试，因为在这个过程中它能保证cpu缓存对于每个测试用例都是干净的，这点我们在后面的章节说明。
 
 ## 测试类型
 

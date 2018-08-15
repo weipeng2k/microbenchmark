@@ -1,5 +1,7 @@
 package com.alibaba.microbenchmark.cacheline;
 
+import java.util.concurrent.CompletableFuture;
+
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Mode;
